@@ -13,19 +13,19 @@ class NN():
         nn_banana = NN.data[0]
         nn_distance = sys.maxsize
         for i, test_banana in enumerate(NN.data):
-            dist = NN.distance(banana, test_banana[1])
+            dist = NN.euclidean_distance(banana, test_banana[1])
             if dist < nn_distance : 
                 nn_distance = dist
                 nn_banana = test_banana
         return nn_banana[0]
 
     @staticmethod
-    def distance(x,y):
+    def euclidean_distance(x,y):
         print(x,y)
-        return np.abs(x[0] - y[0]) + np.abs(x[1] - y[1]) + np.abs(x[2] - y[2])
+        return np.sqrt((x[0] - y[0])**2 + (x[1] - y[1])**2 + (x[2] - y[2])**2) 
 
     @staticmethod
-    def train(datafile = "test.csv"):
+    def train(datafile = "training_banana/banana.csv"):
         with open(datafile, 'r') as myfile:
             csv_reader = csv.reader(myfile, delimiter=',', quoting=csv.QUOTE_NONNUMERIC)
             for row in csv_reader:
@@ -46,19 +46,12 @@ def extract_banana(image):
     banana = max(contours, key=cv2.contourArea)
     cv2.drawContours(image, [banana], 0, (0,255,0), 3)
 
-    # cv2.imshow('image',image)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
-
     return banana, image
 
 def extract_rgb(image, banana):
     mask = banana_mask(image, banana)
     area = cv2.contourArea(banana)
     mean_val = cv2.mean(image, mask = mask)
-    # cv2.imshow('banana mask',mask)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
 
     print(mean_val)
     B = mean_val[0]
@@ -66,29 +59,40 @@ def extract_rgb(image, banana):
     R = mean_val[2]
     return [R,G,B]
 
+def predict(image):
+    b, _img = extract_banana(image)
+    d = extract_rgb(image, b)
+    print(NN.predict(d))
 
-data = []
-for i in range(1,7):
-    im = cv2.imread('b{}.png'.format(i))
-    b, _img = extract_banana(im)
-    d = extract_rgb(im, b)
-    d.append(i)
-    data.append(d)
-
-with open("test.csv", 'w', newline='') as myfile:
-    wr = csv.writer(myfile)
-    for d in data: 
-        wr.writerow(d)
+    cv2.imshow('image', _img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 
+def train_NN():
+    data = []
+    for i in range(1,7):
+        im = cv2.imread('training_banana/b{}.png'.format(i))
+        b, _img = extract_banana(im)
+        d = extract_rgb(im, b)
+        d.append(i)
+        data.append(d)
 
-im = cv2.imread('banana2.jpg')
-b, _img = extract_banana(im)
-d = extract_rgb(im, b)
+    with open("training_banana/banana.csv", 'w', newline='') as myfile:
+        wr = csv.writer(myfile)
+        for d in data: 
+            wr.writerow(d)
 
-NN.train()
-print(NN.predict(d))
-cv2.imshow('image', _img)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+def main():
+    NN.train()
+    if len(sys.argv) < 2:
+        print("missing argument: image")
+        exit(-1)
+    img = sys.argv[1]
+    image = cv2.imread(img)
+    predict(image)
+
+if __name__ == "__main__":
+    # train_NN()
+    main()
 
