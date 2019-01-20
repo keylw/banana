@@ -3,6 +3,7 @@ import cv2 as cv2
 import sys 
 
 import csv
+import matplotlib.pyplot as plt
 
 
 class NN():
@@ -72,6 +73,7 @@ def extract_rgb_features(image, banana):
     R_std = std[2][0]
 
     print(R_mean)
+    plot_histogram(image, mask)
     return [R_mean,G_mean,B_mean,R_std,G_std,B_std]
 
 def predict(image):
@@ -95,7 +97,6 @@ def train_NN():
             wr.writerow(d)
 
 def show_result(image, pred, rgb_values):
-    import matplotlib.pyplot as plt
     
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     res = [0,0,0,0,0,0,0]
@@ -115,6 +116,20 @@ def show_result(image, pred, rgb_values):
     plt.title('Banana')
     plt.show()
 
+def extract_histogram_features(image, mask):
+    color = ('b','g','r')
+    features = []
+    for i,col in enumerate(color):
+        f = []
+        histr = cv2.calcHist([image],[i],mask,[256],[0,256])
+
+def plot_histogram(image, mask):
+    color = ('b','g','r')
+    for i,col in enumerate(color):
+        histr = cv2.calcHist([image],[i],mask,[256],[0,256])
+        plt.plot(histr,color = col)
+        plt.xlim([0,256])
+    plt.show()
 
 def main():
     NN.train()
@@ -128,5 +143,5 @@ def main():
 
 if __name__ == "__main__":
     train_NN()
-    main()
+    # main()
 
