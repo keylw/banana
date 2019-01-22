@@ -7,13 +7,12 @@ import matplotlib.pyplot as plt
 
 
 class NN():
-    data = []
-
+    training_data = []
     @staticmethod
     def predict(banana):
-        nn_banana = NN.data[0]
+        nn_banana = NN.training_data[0]
         nn_distance = sys.maxsize
-        for i, test_banana in enumerate(NN.data):
+        for i, test_banana in enumerate(NN.training_data):
             dist = NN.euclidean_distance(banana, test_banana[1])
             if dist < nn_distance : 
                 nn_distance = dist
@@ -31,7 +30,6 @@ class NN():
         G_s = (x[0] - y[0])**2
         B_s = (x[0] - y[0])**2
 
-
         return np.sqrt(R_m + G_m + B_m + R_s + G_s + B_s) 
 
     @staticmethod
@@ -41,7 +39,7 @@ class NN():
             for row in csv_reader:
                 print(row)
                 d = (row[6],[row[0],row[1],row[2],row[3],row[4],row[5]])
-                NN.data.append(d)
+                NN.training_data.append(d)
         
 
 def banana_mask(image, banana):
@@ -73,7 +71,6 @@ def extract_rgb_features(image, banana):
     R_std = std[2][0]
 
     print(R_mean)
-    plot_histogram(image, mask)
     return [R_mean,G_mean,B_mean,R_std,G_std,B_std]
 
 def predict(image):
@@ -85,12 +82,22 @@ def predict(image):
 
 def train_NN():
     data = []
+    images = []
+    banana_contours = []
+
     for i in range(1,8):
         im = cv2.imread('training_banana/b{}.png'.format(i))
         b, _img = extract_banana(im)
         d = extract_rgb_features(im, b)
         d.append(i)
-        data.append(d)    
+        data.append(d)
+
+        # for plotting
+        images.append(im)
+        banana_contours.append(b)
+
+    plot_histogram(images, banana_contours)
+
     with open("training_banana/banana.csv", 'w', newline='') as myfile:
         wr = csv.writer(myfile)
         for d in data: 
@@ -123,12 +130,22 @@ def extract_histogram_features(image, mask):
         f = []
         histr = cv2.calcHist([image],[i],mask,[256],[0,256])
 
-def plot_histogram(image, mask):
+def plot_histogram(images, bananas):
+    fig = plt.figure()
     color = ('b','g','r')
-    for i,col in enumerate(color):
-        histr = cv2.calcHist([image],[i],mask,[256],[0,256])
-        plt.plot(histr,color = col)
+    for i in range(len(images)):
+        gray = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
+        mask = banana_mask(images[i], bananas[i])
+        histr = cv2.calcHist([gray],[0],mask,[256],[0,256])
+        plt.subplot(len(images), len(color) + 1 , (1+i)+(3*i)+ 3)
+        plt.plot(histr,color = 'gray')
         plt.xlim([0,256])
+
+        for j,col in enumerate(color):
+            histr = cv2.calcHist([images[i]],[j],mask,[256],[0,256])
+            plt.subplot(len(images), len(color) + 1,(1+i)+(3*i) + j)
+            plt.plot(histr,color = col)
+            plt.xlim([0,256])
     plt.show()
 
 def main():
@@ -140,8 +157,6 @@ def main():
     image = cv2.imread(img)
     predict(image)
 
-
 if __name__ == "__main__":
     train_NN()
     # main()
-
