@@ -10,27 +10,38 @@ class NN():
     training_data = []
     @staticmethod
     def predict(banana):
-        nn_banana = NN.training_data[0]
+        label = -1
         nn_distance = sys.maxsize
         for i, test_banana in enumerate(NN.training_data):
-            dist = NN.euclidean_distance(banana, test_banana[1])
+            # dist = NN.rgb_euclidean_distance(banana, test_banana[1])
+            dist = NN.hist_euclidean_distance(banana, test_banana[1])
             if dist < nn_distance : 
                 nn_distance = dist
-                nn_banana = test_banana
-        return nn_banana[0]
+                label = test_banana[0]
+        return label
 
     @staticmethod
-    def euclidean_distance(x,y):
+    def rgb_euclidean_distance(x,y):
         # print(x,y)    
         R_m = (x[0] - y[0])**2
-        G_m = (x[0] - y[0])**2
-        B_m = (x[0] - y[0])**2
+        G_m = (x[1] - y[1])**2
+        B_m = (x[2] - y[2])**2
 
-        R_s = (x[0] - y[0])**2
-        G_s = (x[0] - y[0])**2
-        B_s = (x[0] - y[0])**2
+        R_s = (x[3] - y[3])**2
+        G_s = (x[4] - y[4])**2
+        B_s = (x[5] - y[5])**2
 
         return np.sqrt(R_m + G_m + B_m + R_s + G_s + B_s) 
+
+    @staticmethod
+    def hist_euclidean_distance(x,y):
+        # print(x,y)    
+        G_m = (x[0] - y[0])**2
+        G_s = (x[1] - y[1])**2
+        R_m = (x[2] - y[2])**2
+        R_s = (x[3] - y[3])**2
+
+        return np.sqrt(R_m + R_s + G_m + G_s ) 
 
     @staticmethod
     def train(datafile = "training_banana/banana.csv"):
@@ -38,7 +49,9 @@ class NN():
             csv_reader = csv.reader(myfile, delimiter=',', quoting=csv.QUOTE_NONNUMERIC)
             for row in csv_reader:
                 print(row)
-                d = (row[6],[row[0],row[1],row[2],row[3],row[4],row[5]])
+                # d = (row[6],[row[0],row[1],row[2],row[3],row[4],row[5]])
+                d = (row[4],[row[0],row[1],row[2],row[3]])
+
                 NN.training_data.append(d)
         
 
@@ -56,6 +69,21 @@ def extract_banana(image):
     cv2.drawContours(image, [banana], 0, (0,255,0), 3)
 
     return banana, image
+
+def extract_histogram_features(image, banana):
+    mask = banana_mask(image, banana)
+    color = ('g','r')
+    features = []
+    for i,col in enumerate(color):
+        histr = cv2.calcHist([image],[i+1],mask,[256],[20,250])
+        histr = histr/np.sum(histr)
+        f = [np.mean(histr), np.std(histr)]
+
+        # TODO : need right feature 
+        features.append(np.argmax(histr))
+        features.append(np.std(histr))
+    print(features)
+    return features #[G.mean, G.mean, R.mean, R.std]
 
 def extract_rgb_features(image, banana):
     mask = banana_mask(image, banana)
@@ -75,8 +103,11 @@ def extract_rgb_features(image, banana):
 
 def predict(image):
     b, _img = extract_banana(image)
-    d = extract_rgb_features(image, b)
+    # d = extract_rgb_features(image, b)
+    d = extract_histogram_features(image, b)
+    # print(d)
     p = NN.predict(d)
+    plot_histogram([image],[b])
     show_result(_img, p, d)
 
 
@@ -88,7 +119,8 @@ def train_NN():
     for i in range(1,8):
         im = cv2.imread('training_banana/b{}.png'.format(i))
         b, _img = extract_banana(im)
-        d = extract_rgb_features(im, b)
+        # d = extract_rgb_features(im, b)
+        d = extract_histogram_features(im, b)
         d.append(i)
         data.append(d)
 
@@ -123,27 +155,22 @@ def show_result(image, pred, rgb_values):
     plt.title('Banana')
     plt.show()
 
-def extract_histogram_features(image, mask):
-    color = ('b','g','r')
-    features = []
-    for i,col in enumerate(color):
-        f = []
-        histr = cv2.calcHist([image],[i],mask,[256],[0,256])
-
 def plot_histogram(images, bananas):
     fig = plt.figure()
     color = ('b','g','r')
     for i in range(len(images)):
         gray = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
         mask = banana_mask(images[i], bananas[i])
-        histr = cv2.calcHist([gray],[0],mask,[256],[0,256])
-        plt.subplot(len(images), len(color) + 1 , (1+i)+(3*i)+ 3)
+        histr = cv2.calcHist([gray],[0],mask,[256],[20,250])
+        plt.subplot(len(images), len(color) + 1 , (1+i)+(len(color)*i)+ len(color))
+        print(np.mean(histr),np.std(histr))
+
         plt.plot(histr,color = 'gray')
         plt.xlim([0,256])
 
         for j,col in enumerate(color):
-            histr = cv2.calcHist([images[i]],[j],mask,[256],[0,256])
-            plt.subplot(len(images), len(color) + 1,(1+i)+(3*i) + j)
+            histr = cv2.calcHist([images[i]],[j],mask,[256],[20,250])
+            plt.subplot(len(images), len(color) + 1,(1+i)+(len(color)*i) + j)
             plt.plot(histr,color = col)
             plt.xlim([0,256])
     plt.show()
